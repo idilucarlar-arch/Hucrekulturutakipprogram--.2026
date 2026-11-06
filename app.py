@@ -8,7 +8,7 @@ st.set_page_config(
             )
 
             st.title("🔬 Hücre Kültürü Takip Sistemi")
-     ⁴       st.write("Sisteme hoş geldiniz! Giriş veya Kayıt sekmesini seçerek devam edin.")
+            st.write("Sisteme hoş geldiniz! Giriş veya Kayıt sekmesini seçerek devam edin.")
 
             # Giriş / Kayıt Menüsü
             menu = ["Giriş Yap", "Kayıt Ol"]
