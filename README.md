@@ -1,1 +1,1 @@
-# Hucre-kulturu-tak-p-s-stem-
+# Hucre-kulturu-takıp-sıstem-
