@@ -82,3 +82,25 @@ def kullanici_giris(kullanici_adi, sifre):
             "rol": kullanici[4]
         }
         return True, "Giriş başarılı!", kullanici_bilgi
+
+def onay_bekleyen_kullanicilari_getir():
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, ad, soyad, kullanici_adi 
+            FROM kullanicilar 
+            WHERE onay_durumu = 0 AND rol != 'yonetici'
+        """)
+        return cursor.fetchall()
+
+def kullanici_onayla(kullanici_id):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE kullanicilar SET onay_durumu = 1 WHERE id = ?", (kullanici_id,))
+        conn.commit()
+
+def kullanici_durum_degistir(kullanici_id, aktif_mi):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE kullanicilar SET aktif_mi = ? WHERE id = ?", (aktif_mi, kullanici_id))
+        conn.commit()
