@@ -175,8 +175,7 @@ if st.session_state["giris_yapildi"]:
                 ["Hücre Hatları", "Besiyerleri", "Kimyasallar"]
             )
           
-                tablo_map = {
+             tablo_map = {
                   "Hücre Hatları": "hucre_hatlari",
                   "Besiyerleri": "besiyerleri",
-                 "Kimyasallar": "kimyasallar"
-}
+                 "Kimyasallar": "kimyasallar"}
