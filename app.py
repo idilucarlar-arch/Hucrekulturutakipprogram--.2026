@@ -8,21 +8,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Tabloları hazırla
 db.tablolari_olustur()
 
-# Oturum yönetimi
 if "giris_yapildi" not in st.session_state:
     st.session_state["giris_yapildi"] = False
     st.session_state["aktif_kullanici"] = None
 if "secili_deney_id" not in st.session_state:
     st.session_state["secili_deney_id"] = None
-if "aktif_menu" not in st.session_state:
-    st.session_state["aktif_menu"] = "Aktif Deneylerim"
 
 st.title("🔬 Hücre Kültürü Takip Sistemi")
 
-# GİRİŞ YAPILMIŞ DURUM
 if st.session_state["giris_yapildi"]:
     kullanici = st.session_state["aktif_kullanici"]
     st.sidebar.write(f"👤 **{kullanici['ad']} {kullanici['soyad']}**")
@@ -34,7 +29,6 @@ if st.session_state["giris_yapildi"]:
         st.session_state["secili_deney_id"] = None
         st.rerun()
 
-    # --- YÖNETİCİ ARAYÜZÜ (FR-23, 24, 25, 26, 27) ---
     if kullanici["rol"] == "yonetici":
         st.header("⚙️ Yönetici Kontrol Paneli")
         sekme1, sekme2, sekme3 = st.tabs([
@@ -67,7 +61,7 @@ if st.session_state["giris_yapildi"]:
                 st.info("Henüz kayıtlı araştırmacı bulunmuyor.")
             else:
                 for k_id, ad, soyad, k_adi, onay, aktif in tum_kullanicilar:
-                    c1, c2, c3 = st.columns([4, 2, 2])
+                    c1, c2 = st.columns([4, 2])
                     durum_etiket = "🟢 Aktif" if aktif == 1 else "🔴 Pasif"
                     onay_etiket = "Onaylı" if onay == 1 else "Onay Bekliyor"
                     c1.write(f"**{ad} {soyad}** (@{k_adi}) — {onay_etiket} | {durum_etiket}")
@@ -120,7 +114,6 @@ if st.session_state["giris_yapildi"]:
                         db.kutuphane_veri_sil(secilen_tablo, oge_id)
                         st.rerun()
 
-    # --- ARAŞTIRMACI ARAYÜZÜ ---
     else:
         menu_secenekleri = [
             "Aktif Deneylerim", 
@@ -135,7 +128,6 @@ if st.session_state["giris_yapildi"]:
         if menu_arastirmaci != "Aktif Deneylerim":
             st.session_state["secili_deney_id"] = None
 
-        # 1. YENİ DENEY OLUŞTUR (FR-05 - FR-12)
         if menu_arastirmaci == "Yeni Deney Oluştur":
             st.subheader("🧪 Yeni Laboratuvar Deneyi Başlat")
             
@@ -173,7 +165,6 @@ if st.session_state["giris_yapildi"]:
                         else:
                             st.error(mesaj)
 
-        # 2. AKTİF DENEYLERİM VE DENEY DETAY EKRANI (FR-14, FR-17, FR-18, FR-19, FR-21)
         elif menu_arastirmaci == "Aktif Deneylerim":
             if st.session_state["secili_deney_id"] is not None:
                 deney = db.deney_detay_getir(st.session_state["secili_deney_id"], kullanici["id"])
@@ -196,7 +187,6 @@ if st.session_state["giris_yapildi"]:
                         "✅ Deney Görevleri"
                     ])
 
-                    # SEKME 1: Deney Genel Bilgileri, Tarih Düzenleme & Sonlandırma
                     with tab_bilgi:
                         st.subheader("Deney Genel Bilgileri")
                         c1, c2 = st.columns(2)
@@ -232,7 +222,6 @@ if st.session_state["giris_yapildi"]:
                             st.session_state["secili_deney_id"] = None
                             st.rerun()
 
-                    # SEKME 2: Hücre Takvimi (FR-19, Sequence 2)
                     with tab_takvim:
                         st.subheader("📅 Özel Hücre Takvimi İşlemleri")
                         with st.expander("➕ Takvime Yeni Laboratuvar İşlemi Ekle", expanded=True):
@@ -269,7 +258,6 @@ if st.session_state["giris_yapildi"]:
                                     db.takvim_islem_sil(t_id)
                                     st.rerun()
 
-                    # SEKME 3: Deney Notları (FR-21, IK-06, IK-07)
                     with tab_notlar:
                         st.subheader("📝 Deney Bulguları ve Notlar (Maks. 5000 Karakter)")
                         yeni_not_icerik = st.text_area(
@@ -287,7 +275,6 @@ if st.session_state["giris_yapildi"]:
                             else:
                                 st.error(mesaj)
 
-                    # SEKME 4: Deneye Özel Yapılacaklar (FR-20, FR-22, IK-11)
                     with tab_gorev:
                         st.subheader("✅ Deney Yapılacaklar Listesi")
                         yeni_gorev = st.text_input("Yeni Görev Yazın", key="deney_gorev_input")
@@ -307,7 +294,6 @@ if st.session_state["giris_yapildi"]:
                                     db.gorev_tamamla_ve_sil(g_id)
                                     st.rerun()
 
-            # Aktif Deneyler Listesi (FR-14: Son yapılan işlemle birlikte)
             else:
                 st.subheader("📋 Yürütülen Aktif Deneyler (FR-14)")
                 deneyler = db.aktif_deneyleri_getir(kullanici["id"])
@@ -345,7 +331,6 @@ if st.session_state["giris_yapildi"]:
                                 st.session_state["secili_deney_id"] = d_id
                                 st.rerun()
 
-        # 3. GENEL TAKVİM (IK-14 ve Sınıf Diyagramı)
         elif menu_arastirmaci == "Genel Takvim":
             st.subheader("🗓️ Genel Laboratuvar Takvimi (IK-14)")
             st.caption("Aktif olan tüm deneylerinizdeki önemli tarihler ve adımlar burada deney renkleriyle topluca görüntülenir. Detaylı bilgi girişi için ilgili deneyin kendi Hücre Takvimine gidiniz.")
@@ -373,7 +358,6 @@ if st.session_state["giris_yapildi"]:
                         unsafe_allow_html=True
                     )
 
-        # 4. GEÇMİŞ DENEYLERİM / ARŞİV VE ARAMA (FR-15, FR-16, IK-05, IK-16)
         elif menu_arastirmaci == "Geçmiş Deneylerim (Arşiv)":
             st.subheader("🗄️ Geçmiş Deneyler Arşivi (FR-15, FR-16)")
             arama_terimi = st.text_input("🔍 Deney Adı ile Eski Deneylerde Ara (IK-05):", placeholder="Aramak istediğiniz deney adını yazın...")
@@ -398,7 +382,6 @@ if st.session_state["giris_yapildi"]:
                             for _, t_tarih, t_islem, t_ikon, t_aciklama in gecmis_takvim:
                                 st.write(f"• **{t_ikon} {t_tarih}** — {t_islem}: {t_aciklama}")
 
-        # 5. GENEL YAPILACAKLAR LİSTESİ (FR-20, FR-22, IK-11)
         elif menu_arastirmaci == "Yapılacaklar Listesi":
             st.subheader("✅ Genel Yapılacaklar Listesi (FR-20, FR-22)")
             genel_gorev = st.text_input("Laboratuvarda yapılacak yeni görevi girin:")
@@ -419,7 +402,6 @@ if st.session_state["giris_yapildi"]:
                         db.gorev_tamamla_ve_sil(g_id)
                         st.rerun()
 
-        # 6. PROFİLİM (FR-03, FR-04)
         elif menu_arastirmaci == "Profilim":
             st.subheader("👤 Profil Bilgilerim (FR-03, FR-04)")
             st.write(f"**Kullanıcı Adı (Değiştirilemez - IK-01):** @{kullanici['kullanici_adi']}")
@@ -446,7 +428,6 @@ if st.session_state["giris_yapildi"]:
                     else:
                         st.error(mesaj)
 
-# GİRİŞ YAPILMAMIŞ DURUM
 else:
     menu = ["Giriş Yap", "Kayıt Ol"]
     secim = st.sidebar.selectbox("İşlem Seçiniz", menu, key="ana_giris_menusu")
