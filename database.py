@@ -291,4 +291,99 @@ def gecmis_deneyleri_getir(kullanici_id, arama_metni=""):
         else:
             cursor.execute("""
                 SELECT id, deney_adi, renk, baslangic_tarihi, bitis_tarihi, hucre_hatti, besiyeri, kimyasallar, durum, notlar 
-                FROM deney
+                FROM deneyler 
+                WHERE kullanici_id = ? AND durum != 'Aktif'
+                ORDER BY id DESC
+            """, (kullanici_id,))
+        return cursor.fetchall()
+
+def deney_detay_getir(deney_id, kullanici_id):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, deney_adi, renk, baslangic_tarihi, bitis_tarihi, hucre_hatti, besiyeri, kimyasallar, durum, notlar
+            FROM deneyler
+            WHERE id = ? AND kullanici_id = ?
+        """, (deney_id, kullanici_id))
+        return cursor.fetchone()
+
+def deney_notu_guncelle(deney_id, yeni_not):
+    if len(yeni_not) > 5000:
+        return False, f"Deney notu en fazla 5000 karakter olabilir! (Mevcut: {len(yeni_not)})"
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE deneyler SET notlar = ? WHERE id = ?", (yeni_not, deney_id))
+        conn.commit()
+        return True, "Deney notları başarıyla kaydedildi!"
+
+def deney_sonlandir(deney_id, sonuc_durumu):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE deneyler SET durum = ? WHERE id = ?", (sonuc_durumu, deney_id))
+        conn.commit()
+
+# --- HÜCRE TAKVİMİ & GENEL TAKVİM İŞLEMLERİ (FR-19, IK-14) ---
+def takvim_islem_ekle(deney_id, tarih, islem_adi, ikon, aciklama):
+    secilen_ikon = ikon if ikon else "🔴"
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO hucre_takvimi (deney_id, tarih, islem_adi, ikon, aciklama, aktif_mi)
+            VALUES (?, ?, ?, ?, ?, 1)
+        """, (deney_id, str(tarih), islem_adi, secilen_ikon, aciklama))
+        conn.commit()
+
+def takvim_islemleri_getir(deney_id):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, tarih, islem_adi, ikon, aciklama 
+            FROM hucre_takvimi 
+            WHERE deney_id = ? AND aktif_mi = 1 
+            ORDER BY tarih ASC, id ASC
+        """, (deney_id,))
+        return cursor.fetchall()
+
+def genel_takvim_olaylarini_getir(kullanici_id):
+    # IK-14 ve Sınıf Diyagramı: Tüm aktif deneylerin takvim adımlarını deney rengiyle topluca getirir
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT ht.tarih, d.deney_adi, d.renk, ht.islem_adi, ht.ikon, d.id
+            FROM hucre_takvimi ht
+            JOIN deneyler d ON ht.deney_id = d.id
+            WHERE d.kullanici_id = ? AND d.durum = 'Aktif' AND ht.aktif_mi = 1
+            ORDER BY ht.tarih ASC
+        """, (kullanici_id,))
+        return cursor.fetchall()
+
+def takvim_islem_sil(islem_id):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE hucre_takvimi SET aktif_mi = 0 WHERE id = ?", (islem_id,))
+        conn.commit()
+
+# --- YAPILACAKLAR LİSTESİ İŞLEMLERİ (FR-20, FR-22, IK-11) ---
+def gorev_ekle(kullanici_id, deney_id, gorev):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO yapilacaklar (kullanici_id, deney_id, gorev)
+            VALUES (?, ?, ?)
+        """, (kullanici_id, deney_id, gorev))
+        conn.commit()
+
+def gorevleri_getir(kullanici_id, deney_id=None):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        if deney_id:
+            cursor.execute("SELECT id, gorev FROM yapilacaklar WHERE kullanici_id = ? AND deney_id = ?", (kullanici_id, deney_id))
+        else:
+            cursor.execute("SELECT id, gorev FROM yapilacaklar WHERE kullanici_id = ?", (kullanici_id,))
+        return cursor.fetchall()
+
+def gorev_tamamla_ve_sil(gorev_id):
+    with baglanti_al() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM yapilacaklar WHERE id = ?", (gorev_id,))
+        conn.commit()
