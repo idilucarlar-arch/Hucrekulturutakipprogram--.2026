@@ -374,4 +374,4 @@ if st.session_state["giris_yapildi"]:
                     )
 
         # 4. GEÇMİŞ DENEYLERİM / ARŞİV VE ARAMA (FR-15, FR-16, IK-05, IK-16)
-        elif menu_arastirmaci == "Geç
+        elif menu_arastirmaci == "Geç"
