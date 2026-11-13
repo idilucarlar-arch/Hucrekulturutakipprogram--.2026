@@ -374,4 +374,110 @@ if st.session_state["giris_yapildi"]:
                     )
 
         # 4. GEÇMİŞ DENEYLERİM / ARŞİV VE ARAMA (FR-15, FR-16, IK-05, IK-16)
-        elif menu_arastirmaci == "Geç"
+        elif menu_arastirmaci == "Geçmiş Deneylerim (Arşiv)":
+            st.subheader("🗄️ Geçmiş Deneyler Arşivi (FR-15, FR-16)")
+            arama_terimi = st.text_input("🔍 Deney Adı ile Eski Deneylerde Ara (IK-05):", placeholder="Aramak istediğiniz deney adını yazın...")
+            
+            gecmis_deneyler = db.gecmis_deneyleri_getir(kullanici["id"], arama_terimi)
+            if not gecmis_deneyler:
+                st.info("Arama kriterine uygun veya tamamlanmış geçmiş deney bulunamadı.")
+            else:
+                for d_id, ad, renk, bas, bit, hatti, besi, kimya, durum, notlar in gecmis_deneyler:
+                    durum_ikon = "✅" if durum == "Başarıyla Tamamlandı" else "❌"
+                    with st.expander(f"{durum_ikon} {ad} ({bas} ➔ {bit}) — Sonuç: {durum}"):
+                        st.write(f"**Hücre Hattı:** {hatti} | **Besiyeri:** {besi}")
+                        st.write(f"**Kullanılan Kimyasallar:** {kimya}")
+                        st.write("**Kaydedilen Deney Notları ve Bulgular:**")
+                        st.info(notlar if notlar else "Not girilmemiş.")
+                        
+                        st.write("**Deney Takvim Geçmişi:**")
+                        gecmis_takvim = db.takvim_islemleri_getir(d_id)
+                        if not gecmis_takvim:
+                            st.write("Takvim kaydı bulunmuyor.")
+                        else:
+                            for _, t_tarih, t_islem, t_ikon, t_aciklama in gecmis_takvim:
+                                st.write(f"• **{t_ikon} {t_tarih}** — {t_islem}: {t_aciklama}")
+
+        # 5. GENEL YAPILACAKLAR LİSTESİ (FR-20, FR-22, IK-11)
+        elif menu_arastirmaci == "Yapılacaklar Listesi":
+            st.subheader("✅ Genel Yapılacaklar Listesi (FR-20, FR-22)")
+            genel_gorev = st.text_input("Laboratuvarda yapılacak yeni görevi girin:")
+            if st.button("Görev Ekle"):
+                if genel_gorev.strip():
+                    db.gorev_ekle(kullanici["id"], None, genel_gorev.strip())
+                    st.success("Görev listeye eklendi!")
+                    st.rerun()
+
+            st.write("---")
+            tum_gorevler = db.gorevleri_getir(kullanici["id"])
+            if not tum_gorevler:
+                st.info("Yapılacaklar listenizde bekleyen görev yok.")
+            else:
+                st.caption("Tamamlandı kutucuğuna tıkladığınızda görev tamamlanır ve listeden otomatik silinir (IK-11):")
+                for g_id, g_metin in tum_gorevler:
+                    if st.checkbox(g_metin, key=f"ggorev_{g_id}"):
+                        db.gorev_tamamla_ve_sil(g_id)
+                        st.rerun()
+
+        # 6. PROFİLİM (FR-03, FR-04)
+        elif menu_arastirmaci == "Profilim":
+            st.subheader("👤 Profil Bilgilerim (FR-03, FR-04)")
+            st.write(f"**Kullanıcı Adı (Değiştirilemez - IK-01):** @{kullanici['kullanici_adi']}")
+            
+            yeni_ad = st.text_input("Ad", value=kullanici["ad"])
+            yeni_soyad = st.text_input("Soyad", value=kullanici["soyad"])
+            yeni_sifre = st.text_input("Yeni Şifre Belirle (Değiştirmek istemiyorsanız boş bırakın - En az 8 karakter)", type="password")
+            
+            if st.button("Profil Bilgilerimi Güncelle"):
+                if not yeni_ad.strip() or not yeni_soyad.strip():
+                    st.warning("Ad ve Soyad alanları boş bırakılamaz.")
+                else:
+                    basari, mesaj = db.profil_guncelle(
+                        kullanici["id"], 
+                        yeni_ad.strip(), 
+                        yeni_soyad.strip(), 
+                        yeni_sifre if yeni_sifre else None
+                    )
+                    if basari:
+                        st.session_state["aktif_kullanici"]["ad"] = yeni_ad.strip()
+                        st.session_state["aktif_kullanici"]["soyad"] = yeni_soyad.strip()
+                        st.success(mesaj)
+                        st.rerun()
+                    else:
+                        st.error(mesaj)
+
+# GİRİŞ YAPILMAMIŞ DURUM
+else:
+    menu = ["Giriş Yap", "Kayıt Ol"]
+    secim = st.sidebar.selectbox("İşlem Seçiniz", menu, key="ana_giris_menusu")
+
+    if secim == "Giriş Yap":
+        st.subheader("Kullanıcı Girişi")
+        kullanici_adi = st.text_input("Kullanıcı Adı")
+        sifre = st.text_input("Şifre", type="password")
+        
+        if st.button("Giriş Yap"):
+            basarili, mesaj, kullanici_bilgi = db.kullanici_giris(kullanici_adi, sifre)
+            if basarili:
+                st.session_state["giris_yapildi"] = True
+                st.session_state["aktif_kullanici"] = kullanici_bilgi
+                st.rerun()
+            else:
+                st.error(mesaj)
+
+    elif secim == "Kayıt Ol":
+        st.subheader("Yeni Araştırmacı Kaydı")
+        ad = st.text_input("Ad")
+        soyad = st.text_input("Soyad")
+        yeni_kullanici = st.text_input("Benzersiz Kullanıcı Adı")
+        yeni_sifre = st.text_input("Şifre (En az 8 karakter)", type="password")
+        
+        if st.button("Kayıt Talebi Gönder"):
+            if not ad or not soyad or not yeni_kullanici or not yeni_sifre:
+                st.warning("Lütfen tüm alanları doldurun.")
+            else:
+                basarili, mesaj = db.kullanici_kayit(ad, soyad, yeni_kullanici, yeni_sifre)
+                if basarili:
+                    st.success(mesaj)
+                else:
+                    st.error(mesaj)
