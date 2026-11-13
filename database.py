@@ -13,7 +13,6 @@ def tablolari_olustur():
     with baglanti_al() as conn:
         cursor = conn.cursor()
         
-        # 1. Kullanıcılar Tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS kullanicilar (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +26,6 @@ def tablolari_olustur():
             )
         """)
         
-        # 2. Parametre Tabloları (FR-24, 25, 26, 27)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS hucre_hatlari (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +48,6 @@ def tablolari_olustur():
             )
         """)
 
-        # 3. Deneyler Tablosu (FR-05 - FR-21, IK-06, IK-07)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS deneyler (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +70,6 @@ def tablolari_olustur():
         except sqlite3.OperationalError:
             pass
 
-        # 4. Hücre Takvimi Tablosu (FR-19, Sequence 2)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS hucre_takvimi (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +83,6 @@ def tablolari_olustur():
             )
         """)
 
-        # 5. Yapılacaklar Listesi Tablosu (FR-20, FR-22, IK-11)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS yapilacaklar (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +93,6 @@ def tablolari_olustur():
             )
         """)
         
-        # Varsayılan Yönetici
         cursor.execute("SELECT * FROM kullanicilar WHERE kullanici_adi = 'admin'")
         if not cursor.fetchone():
             yonetici_sifre = sifre_hashle("admin1234")
@@ -109,7 +103,6 @@ def tablolari_olustur():
             
         conn.commit()
 
-# --- KULLANICI & PROFİL İŞLEMLERİ ---
 def kullanici_kayit(ad, soyad, kullanici_adi, sifre):
     if len(sifre) < 8:
         return False, "Şifre en az 8 karakter olmalıdır!"
@@ -148,7 +141,6 @@ def kullanici_giris(kullanici_adi, sifre):
         }
 
 def profil_guncelle(kullanici_id, yeni_ad, yeni_soyad, yeni_sifre=None):
-    # FR-03, FR-04: Profil bilgilerini güncelleme
     with baglanti_al() as conn:
         cursor = conn.cursor()
         if yeni_sifre:
@@ -188,7 +180,6 @@ def kullanici_durum_degistir(kullanici_id, aktif_mi):
         cursor.execute("UPDATE kullanicilar SET aktif_mi = ? WHERE id = ?", (aktif_mi, kullanici_id))
         conn.commit()
 
-# --- YÖNETİCİ KÜTÜPHANESİ İŞLEMLERİ (FR-24, 25, 26, 27, IK-13) ---
 def kutuphane_veri_ekle(tablo, ad):
     with baglanti_al() as conn:
         cursor = conn.cursor()
@@ -208,7 +199,6 @@ def kutuphane_veri_guncelle(tablo, veri_id, yeni_ad):
         conn.commit()
 
 def kutuphane_veri_sil(tablo, veri_id):
-    # IK-13: Kalıcı silme yapılmaz, arşivlenir
     with baglanti_al() as conn:
         cursor = conn.cursor()
         cursor.execute(f"UPDATE {tablo} SET aktif_mi = 0 WHERE id = ?", (veri_id,))
@@ -220,7 +210,6 @@ def kutuphane_listele(tablo):
         cursor.execute(f"SELECT id, ad FROM {tablo} WHERE aktif_mi = 1 ORDER BY ad ASC")
         return cursor.fetchall()
 
-# --- DENEY YÖNETİMİ İŞLEMLERİ ---
 def deney_ekle(kullanici_id, deney_adi, renk, baslangic, bitis, hucre_hatti, besiyeri, kimyasallar_listesi):
     if baslangic >= bitis:
         return False, "Deney başlangıç tarihi, bitiş tarihinden önce olmalıdır! (IK-04)"
@@ -243,7 +232,6 @@ def deney_ekle(kullanici_id, deney_adi, renk, baslangic, bitis, hucre_hatti, bes
         return True, "Deney başarıyla oluşturuldu!"
 
 def deney_tarih_guncelle(deney_id, yeni_baslangic, yeni_bitis):
-    # FR-08, IK-04: Tarih düzenleme
     if yeni_baslangic >= yeni_bitis:
         return False, "Başlangıç tarihi bitiş tarihinden önce olmalıdır! (IK-04)"
     with baglanti_al() as conn:
@@ -266,7 +254,6 @@ def aktif_deneyleri_getir(kullanici_id):
         return cursor.fetchall()
 
 def deney_son_islem_getir(deney_id):
-    # FR-14: Aktif deneylerde yapılan en son işlemi getirme
     with baglanti_al() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -278,7 +265,6 @@ def deney_son_islem_getir(deney_id):
         return cursor.fetchone()
 
 def gecmis_deneyleri_getir(kullanici_id, arama_metni=""):
-    # FR-15, FR-16, IK-05, IK-16: Geçmiş deneyleri listeleme ve deney adıyla arama
     with baglanti_al() as conn:
         cursor = conn.cursor()
         if arama_metni.strip():
@@ -322,7 +308,6 @@ def deney_sonlandir(deney_id, sonuc_durumu):
         cursor.execute("UPDATE deneyler SET durum = ? WHERE id = ?", (sonuc_durumu, deney_id))
         conn.commit()
 
-# --- HÜCRE TAKVİMİ & GENEL TAKVİM İŞLEMLERİ (FR-19, IK-14) ---
 def takvim_islem_ekle(deney_id, tarih, islem_adi, ikon, aciklama):
     secilen_ikon = ikon if ikon else "🔴"
     with baglanti_al() as conn:
@@ -345,7 +330,6 @@ def takvim_islemleri_getir(deney_id):
         return cursor.fetchall()
 
 def genel_takvim_olaylarini_getir(kullanici_id):
-    # IK-14 ve Sınıf Diyagramı: Tüm aktif deneylerin takvim adımlarını deney rengiyle topluca getirir
     with baglanti_al() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -363,7 +347,6 @@ def takvim_islem_sil(islem_id):
         cursor.execute("UPDATE hucre_takvimi SET aktif_mi = 0 WHERE id = ?", (islem_id,))
         conn.commit()
 
-# --- YAPILACAKLAR LİSTESİ İŞLEMLERİ (FR-20, FR-22, IK-11) ---
 def gorev_ekle(kullanici_id, deney_id, gorev):
     with baglanti_al() as conn:
         cursor = conn.cursor()
